@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OLA & Allocation Decision Tree Analysis Tool</title>
+  
+  <!-- Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Styling -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Libraries (SheetJS and ExcelJS for Excel parsing/generation, Chart.js for data visualization, Lucide for icons) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+</head>
+<body class="dark-theme">
+  <!-- Decorative Background Glows -->
+  <div class="glow-bg-1"></div>
+  <div class="glow-bg-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <i data-lucide="activity"></i>
+        </div>
+        <div class="logo-text">
+          <h1>OLA & Allocation</h1>
+          <p>Decision Tree Analysis Copilot <span id="js-version-display" style="font-size: 11px; padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-left: 8px; color: #ff9800; font-weight: 600;">Legacy (Cached)</span></p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle" class="btn-icon" title="Toggle Theme">
+          <i data-lucide="sun"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      
+      <!-- STEP 1: Upload Files -->
+      <section class="upload-section card">
+        <div class="section-title" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="file-up"></i>
+            <h2>Step 1: Load Data Files</h2>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-show-atlan" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-primary); cursor: pointer;">
+              <i data-lucide="database" style="width: 14px; height: 14px; color: var(--color-primary);"></i>
+              <span>Atlan OLA Query</span>
+            </button>
+            <button id="btn-show-script" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-primary); cursor: pointer;">
+              <i data-lucide="terminal" style="width: 14px; height: 14px; color: var(--color-secondary);"></i>
+              <span>Allocation Sheet Cleaner</span>
+            </button>
+          </div>
+        </div>
+        <p class="section-desc">Upload the OLA Excel file and the Allocation Excel file to begin the analysis. The tool will automatically identify them based on keywords in their filenames.</p>
+        
+        <!-- Atlan OLA Query Modal/Drawer -->
+        <div id="atlan-panel" class="hidden" style="margin-bottom: 24px; padding: 18px; background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: var(--radius-md); animation: fadeIn 0.3s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary);">Atlan OLA Extract Query (SQL)</h3>
+              <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;"><strong>Instructions:</strong> Open Atlan &rarr; go to Query editor &rarr; paste the copied SQL query &rarr; run &rarr; download the resulting data file.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-copy-atlan" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <i data-lucide="copy" style="width: 12px; height: 12px;"></i> <span>Copy Query</span>
+              </button>
+              <button id="btn-edit-atlan" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> <span>Edit Custom</span>
+              </button>
+              <button id="btn-close-atlan" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: var(--color-error); cursor: pointer;">
+                Close
+              </button>
+            </div>
+          </div>
+          
+          <!-- Code Block Display -->
+          <div id="atlan-view-mode">
+            <pre id="atlan-code-display" style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 11px; overflow-x: auto; color: var(--color-primary); max-height: 250px; border: 1px solid rgba(255,255,255,0.05); text-align: left;"></pre>
+          </div>
+          
+          <!-- Edit Mode -->
+          <div id="atlan-edit-mode" class="hidden">
+            <textarea id="atlan-textarea" style="width: 100%; height: 200px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--card-border); border-radius: 6px; font-family: monospace; font-size: 11px; padding: 10px; resize: vertical; outline: none; margin-bottom: 10px;"></textarea>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button id="btn-cancel-edit-atlan" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">Cancel</button>
+              <button id="btn-save-atlan" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">Save Custom Query</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Excel Cleaner Script Modal/Drawer -->
+        <div id="script-panel" class="hidden" style="margin-bottom: 24px; padding: 18px; background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: var(--radius-md); animation: fadeIn 0.3s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary);">Allocation Sheet Cleaner (Office Scripts)</h3>
+              <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;"><strong>Instructions:</strong> Go to allocation tracker &rarr; go to automate tab &rarr; go to new script &rarr; edit in code editor &rarr; paste the copied query and run.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-copy-script" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <i data-lucide="copy" style="width: 12px; height: 12px;"></i> <span>Copy Script</span>
+              </button>
+              <button id="btn-edit-script" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> <span>Edit Custom</span>
+              </button>
+              <button id="btn-close-script" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: var(--color-error); cursor: pointer;">
+                Close
+              </button>
+            </div>
+          </div>
+          
+          <!-- Code Block Display -->
+          <div id="script-view-mode">
+            <pre id="script-code-display" style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 11px; overflow-x: auto; color: var(--color-secondary); max-height: 250px; border: 1px solid rgba(255,255,255,0.05); text-align: left;"></pre>
+          </div>
+          
+          <!-- Edit Mode -->
+          <div id="script-edit-mode" class="hidden">
+            <textarea id="script-textarea" style="width: 100%; height: 200px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--card-border); border-radius: 6px; font-family: monospace; font-size: 11px; padding: 10px; resize: vertical; outline: none; margin-bottom: 10px;"></textarea>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button id="btn-cancel-edit" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">Cancel</button>
+              <button id="btn-save-script" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">Save Custom Script</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="upload-grid">
+          <!-- OLA File Dropzone -->
+          <div class="dropzone" id="ola-dropzone">
+            <input type="file" id="ola-file-input" accept=".xlsx, .xls, .csv" class="file-input">
+            <div class="dropzone-content">
+              <div class="dropzone-icon color-ola">
+                <i data-lucide="database"></i>
+              </div>
+              <h3>OLA Data File</h3>
+              <p class="dropzone-instruction">Drag & drop your Excel file here or <span class="browse-link">browse</span></p>
+              <p class="dropzone-keyword">Keyword: <strong>"ola"</strong></p>
+              <div class="file-details hidden" id="ola-file-details">
+                <div class="file-name-row">
+                  <i data-lucide="file-check"></i>
+                  <span class="file-name">filename.xlsx</span>
+                </div>
+                <div class="file-stats">
+                  <span id="ola-row-count">0 rows</span> | <span id="ola-weeks-count">0 weeks</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Allocation File Dropzone -->
+          <div class="dropzone" id="allocation-dropzone">
+            <input type="file" id="allocation-file-input" accept=".xlsx, .xls, .csv" class="file-input">
+            <div class="dropzone-content">
+              <div class="dropzone-icon color-allocation">
+                <i data-lucide="truck"></i>
+              </div>
+              <h3>Allocation Data File</h3>
+              <p class="dropzone-instruction">Drag & drop your Excel file here or <span class="browse-link">browse</span></p>
+              <p class="dropzone-keyword">Keyword: <strong>"allocation"</strong></p>
+              <div class="file-details hidden" id="allocation-file-details">
+                <div class="file-name-row">
+                  <i data-lucide="file-check"></i>
+                  <span class="file-name">filename.xlsx</span>
+                </div>
+                <div class="file-stats">
+                  <span id="allocation-row-count">0 rows</span> | <span id="allocation-date-range">PO Date Range</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Classification Mapping File Dropzone -->
+          <div class="dropzone" id="classification-dropzone">
+            <input type="file" id="classification-file-input" accept=".xlsx, .xls, .csv" class="file-input">
+            <div class="dropzone-content">
+              <div class="dropzone-icon" style="color: var(--color-warning);">
+                <i data-lucide="layers"></i>
+              </div>
+              <h3>Classification Map (Optional)</h3>
+              <p class="dropzone-instruction">Drag & drop mapping file or <span class="browse-link">browse</span></p>
+              <p class="dropzone-keyword">Keyword: <strong>"classification"</strong> or <strong>"mapping"</strong></p>
+              <div class="file-details hidden" id="classification-file-details">
+                <div class="file-name-row">
+                  <i data-lucide="file-check"></i>
+                  <span class="file-name">filename.xlsx</span>
+                </div>
+                <div class="file-stats">
+                  <span id="classification-row-count">0 basepacks</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="processing-controls">
+          <div class="filter-controls-inline">
+            <div class="filter-group">
+              <label for="weeks-filter">OLA Filter:</label>
+              <select id="weeks-filter">
+                <option value="1">Last Week</option>
+                <option value="2" selected>Last 2 Weeks</option>
+                <option value="3">Last 3 Weeks</option>
+                <option value="4">Last 4 Weeks</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="po-days-filter">Allocation PO Filter:</label>
+              <select id="po-days-filter">
+                <option value="20" selected>Latest 20 Days of POs</option>
+                <option value="15">Latest 15 Days of POs</option>
+                <option value="30">Latest 30 Days of POs</option>
+                <option value="all">Keep All POs</option>
+              </select>
+            </div>
+            <div class="filter-group" id="customer-chain-filter-group">
+              <label>Customer Chain:</label>
+              <div class="custom-select-container" id="chain-select-container">
+                <button type="button" class="custom-select-trigger" id="chain-select-trigger" disabled>
+                  <span>Upload Allocation File First</span>
+                  <i data-lucide="chevron-down"></i>
+                </button>
+                <div class="custom-select-dropdown hidden" id="chain-select-dropdown">
+                  <div class="custom-select-option select-all-option">
+                    <input type="checkbox" id="chk-chain-all" checked>
+                    <label for="chk-chain-all">Select All</label>
+                  </div>
+                  <div class="custom-select-options-list" id="chain-options-list">
+                    <!-- Dynamic options will be added here -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button id="btn-process" class="btn btn-primary" disabled>
+            <i data-lucide="play-circle"></i> Run Analysis
+          </button>
+        </div>
+      </section>
+
+      <!-- STEP 2: Decision Tree Analysis Dashboard (Hidden by default) -->
+      <section id="analysis-dashboard" class="hidden">
+        <div class="card decision-tree-card">
+          <div class="section-title">
+            <i data-lucide="git-merge"></i>
+            <h2>Step 2: Interactive Decision Tree Explorer</h2>
+          </div>
+          <p class="section-desc">Click on nodes to traverse the supply and demand decision hierarchy and view basepack drilldowns.</p>
+          
+          <div class="dashboard-actions">
+            <button id="btn-download-demand" class="btn btn-success">
+              <i data-lucide="download"></i> Download Demand Report (Raise PO)
+            </button>
+            <button id="btn-download-supply" class="btn btn-orange">
+              <i data-lucide="download-cloud"></i> Download Supply Report (PO Ageing Issues)
+            </button>
+          </div>
+          <div class="interactive-tree-container">
+            <!-- Root Row -->
+            <div class="tree-row" id="tree-row-root">
+              <div class="row-label">Root Node</div>
+              <div class="nodes-grid">
+                <div class="tree-node-card active" id="node-root">
+                  <div class="node-card-icon color-blue"><i data-lucide="box"></i></div>
+                  <div class="node-card-title">Low OLA Basepacks</div>
+                  <div class="node-card-desc">Avg OLA &lt; 80%</div>
+                  <div class="node-card-badge bg-blue" id="val-root-count">0</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="tree-connector" id="conn-to-accounts">
+              <div class="connector-line-vertical"></div>
+            </div>
+            
+            <!-- Accounts Row -->
+            <div class="tree-row" id="tree-row-accounts">
+              <div class="row-label">Accounts</div>
+              <div class="nodes-grid" id="grid-accounts" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                <!-- Dynamic account cards go here -->
+              </div>
+            </div>
+
+            <div class="tree-connector hidden" id="conn-to-branches">
+              <div class="connector-line-vertical"></div>
+            </div>
+            
+            <!-- Branches Row (Demand vs Supply) -->
+            <div class="tree-row hidden" id="tree-row-branches">
+              <div class="row-label" id="lbl-branches-title">Analysis Branches</div>
+              <div class="nodes-grid" style="grid-template-columns: repeat(2, minmax(200px, 1fr));">
+                <!-- Demand Side Card -->
+                <div class="tree-node-card" id="node-branch-demand" data-side="demand">
+                  <div class="node-card-icon color-yellow"><i data-lucide="arrow-down-right"></i></div>
+                  <div class="node-card-title">Demand Side</div>
+                  <div class="node-card-desc">Raise PO Action Required</div>
+                  <div class="node-card-badge bg-yellow" id="val-demand-count">0</div>
+                </div>
+                <!-- Supply Side Card -->
+                <div class="tree-node-card" id="node-branch-supply" data-side="supply">
+                  <div class="node-card-icon color-orange"><i data-lucide="arrow-down-left"></i></div>
+                  <div class="node-card-title">Supply Side</div>
+                  <div class="node-card-desc">PO Ageing Bottlenecks</div>
+                  <div class="node-card-badge bg-orange" id="val-supply-count">0</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="tree-connector hidden" id="conn-to-subbranches">
+              <div class="connector-line-vertical"></div>
+            </div>
+
+            <!-- Row 3: Sub-branches / Classifications or Issues (Dynamic based on click) -->
+            <div class="tree-row hidden" id="tree-row-subbranches">
+              <div class="row-label" id="lbl-subbranch-title">Sub-Categories</div>
+              <div class="nodes-grid" id="grid-subbranches">
+                <!-- Dynamic cards go here (A/B/C/#N/A for Demand, or Fill Rate/Ageing for Supply) -->
+              </div>
+            </div>
+            
+            <div class="tree-connector hidden" id="conn-to-classifications">
+              <div class="connector-line-vertical"></div>
+            </div>
+
+            <!-- Row 4: Supply Classifications (Shown only for Supply Side -> Issue click) -->
+            <div class="tree-row hidden" id="tree-row-classifications">
+              <div class="row-label" id="lbl-classification-title">Pack Classification</div>
+              <div class="nodes-grid" id="grid-classifications">
+                <!-- Dynamic A/B/C/#N/A cards go here for Supply issues -->
+              </div>
+            </div>
+
+            <div class="tree-connector hidden" id="conn-to-details">
+              <div class="connector-line-vertical"></div>
+            </div>
+
+            <!-- Row 5: Basepack Details Drilldown Table -->
+            <div class="tree-row hidden" id="tree-row-details">
+              <div class="row-label">Basepack Drilldown</div>
+              <div class="card details-table-card" style="width: 100%; max-width: 1100px; padding: 20px; background: var(--bg-secondary); border: 1px solid var(--card-border);">
+                <div class="table-responsive">
+                  <table class="drilldown-table">
+                    <thead>
+                      <tr id="details-table-head">
+                        <!-- Dynamic headers -->
+                      </tr>
+                    </thead>
+                    <tbody id="details-table-body">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Processing Progress Overlay / Message -->
+      <div id="processing-loader" class="loader-container hidden">
+        <div class="loader"></div>
+        <p id="loader-message">Processing datasets and generating Excel...</p>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>OLA & Allocation Decision Tree Analysis Tool &bull; Powered by Antigravity AI</p>
+    </footer>
+  </div>
+
+  <script src="app.js?v=13"></script>
+</body>
+</html>
